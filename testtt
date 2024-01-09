@@ -1,0 +1,37 @@
+# 設定計時器
+timer_start = time.time()
+
+while True:
+    ret, frame = cap.read()
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    fgmask = fgbg.apply(gray)
+    fgmask = cv2.erode(fgmask, None, iterations=2)
+    fgmask = cv2.dilate(fgmask, None, iterations=2)
+
+    contours, _ = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # 檢測到移動時重置計時器並框選移動物體
+    if len(contours) > 0:
+        # 重置計時器
+        timer_start = time.time()
+
+        for contour in contours:
+            # 忽略小區域
+            if cv2.contourArea(contour) < 1000:
+                continue
+
+            # 計算並繪製矩形框
+            (x, y, w, h) = cv2.boundingRect(contour)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+    # 如果計時器存在且超過30秒，則關閉LED
+    if timer_start is not None and time.time() - timer_start > 30:
+        GPIO.output(LED_PIN, GPIO.LOW)
+    else:
+        # 每次迴圈都確保LED是亮的
+        GPIO.output(LED_PIN, GPIO.HIGH)
+
+    cv2.imshow('Frame', frame)
+
+    if cv2.waitKey(30) & 0xFF == ord('q'):
+        break
